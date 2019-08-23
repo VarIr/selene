@@ -11,7 +11,19 @@ import types
 
 import torch
 
+from . import _is_lua_trained_model
 from . import instantiate
+
+
+def class_instantiate(classobj):
+    """Not used currently, but might be useful later for recursive
+    class instantiation
+    """
+    for attr, obj in classobj.__dict__.items():
+        is_module = getattr(obj, '__module__', None)
+        if is_module and "selene_sdk" in is_module and attr is not "model":
+            class_instantiate(obj)
+    classobj.__init__(**classobj.__dict__)
 
 
 def module_from_file(path):
@@ -103,11 +115,12 @@ def initialize_model(model_configs, train=True, lr=None):
     model_class = getattr(module, model_class_name)
 
     model = model_class(**model_configs["class_args"])
-
     if "non_strand_specific" in model_configs:
         from selene_sdk.utils import NonStrandSpecific
         model = NonStrandSpecific(
             model, mode=model_configs["non_strand_specific"])
+
+    _is_lua_trained_model(model)
     criterion = module.criterion()
     if train and isinstance(lr, float):
         optim_class, optim_kwargs = module.get_optimizer(lr)
@@ -148,7 +161,7 @@ def execute(operations, configs, output_dir):
 
     """
     model = None
-    trainer = None
+    train_model = None
     for op in operations:
         if op == "train":
             model, loss, optim, optim_kwargs = initialize_model(
@@ -157,58 +170,52 @@ def execute(operations, configs, output_dir):
             sampler_info = configs["sampler"]
             if output_dir is not None:
                 sampler_info.bind(output_dir=output_dir)
-
+            sampler = instantiate(sampler_info)
             train_model_info = configs["train_model"]
-
-            data_sampler = instantiate(sampler_info)
-
-            train_model_info.bind(
-                model=model,
-                data_sampler=data_sampler,
-                loss_criterion=loss,
-                optimizer_class=optim,
-                optimizer_kwargs=optim_kwargs)
+            train_model_info.bind(model=model,
+                                  data_sampler=sampler,
+                                  loss_criterion=loss,
+                                  optimizer_class=optim,
+                                  optimizer_kwargs=optim_kwargs)
             if output_dir is not None:
                 train_model_info.bind(output_dir=output_dir)
 
-            trainer = instantiate(train_model_info)
+            train_model = instantiate(train_model_info)
             # TODO: will find a better way to handle this in the future
             if "load_test_set" in configs and configs["load_test_set"] and \
                     "evaluate" in operations:
-                trainer.create_test_set()
-            trainer.train_and_validate()
+                train_model.create_test_set()
+            train_model.train_and_validate()
 
         elif op == "evaluate":
-            if trainer is not None:
-                trainer.evaluate()
+            if train_model is not None:
+                train_model.evaluate()
 
             if not model:
                 model, loss = initialize_model(
                     configs["model"], train=False)
             if "evaluate_model" in configs:
                 sampler_info = configs["sampler"]
-
+                sampler = instantiate(sampler_info)
                 evaluate_model_info = configs["evaluate_model"]
-
-                data_sampler = instantiate(sampler_info)
                 evaluate_model_info.bind(
                     model=model,
                     criterion=loss,
-                    data_sampler=data_sampler)
+                    data_sampler=sampler)
                 if output_dir is not None:
                     evaluate_model_info.bind(output_dir=output_dir)
-                evaluator = instantiate(evaluate_model_info)
-                evaluator.evaluate()
+
+                evaluate_model = instantiate(evaluate_model_info)
+                evaluate_model.evaluate()
 
         elif op == "analyze":
             if not model:
                 model, _ = initialize_model(
                     configs["model"], train=False)
-
             analyze_seqs_info = configs["analyze_sequences"]
             analyze_seqs_info.bind(model=model)
-            analyze_seqs = instantiate(analyze_seqs_info)
 
+            analyze_seqs = instantiate(analyze_seqs_info)
             if "variant_effect_prediction" in configs:
                 vareff_info = configs["variant_effect_prediction"]
                 if "vcf_files" not in vareff_info:
@@ -237,7 +244,7 @@ def execute(operations, configs, output_dir):
                                      "neither.")
             if "prediction" in configs:
                 predict_info = configs["prediction"]
-                analyze_seqs.get_predictions_for_fasta_file(**predict_info)
+                analyze_seqs.get_predictions(**predict_info)
 
 
 def parse_configs_and_run(configs,

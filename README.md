@@ -7,13 +7,25 @@ Selene is a Python library and command line interface for training deep neural n
 ## Installation
 
 We recommend using Selene with Python 3.6 or above. 
-Package installation should only take a few minutes (less than 10 minutes, typically ~2-3 minutes) with any of these methods (conda, source). We previously supported installation through pip, but we are refraining from releasing the latest version of Selene with pip until we resolve some issues we are observing with the pip installations of torch and torchvision.   
+Package installation should only take a few minutes (less than 10 minutes, typically ~2-3 minutes) with any of these methods (conda, pip, source). 
+
+**Install [PyTorch](https://pytorch.org/get-started/locally/).** If you have an NVIDIA GPU, install a version of PyTorch that supports it--Selene will run much faster with a discrete GPU.
 
 ### Installing selene with [Anaconda](https://www.anaconda.com/download/) (for Linux):
 
 ```sh
 conda install -c bioconda selene-sdk
 ```
+
+### Installing selene with pip:
+
+```sh
+pip install selene-sdk
+```
+
+Note that we do not recommend pip-installing older versions of Selene (below 0.4.0), as these releases were less stable. 
+
+We currently only have a source distribution available for pip-installation. We are looking into releasing wheels in the future. 
 
 ### Installing selene from source:
 
@@ -22,7 +34,7 @@ First, download the latest commits from the source repository (or download the l
 git clone https://github.com/FunctionLab/selene.git
 ```
 
-The `setup.py` script requires NumPy. Please make sure you have this already installed.
+The `setup.py` script requires NumPy, Cython, and setuptools. Please make sure you have these already installed.
 
 If you plan on working in the `selene` repository directly, we recommend [setting up a conda environment](https://conda.io/docs/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) using `selene-cpu.yml` or `selene-gpu.yml` (if CUDA is enabled on your machine) and activating it.
 These environment YAML files list specific versions of package dependencies that we have used in the past to test Selene.
@@ -49,6 +61,12 @@ Users supply their data, model architecture, and configuration parameters, and S
 For a more detailed overview of the components in the Selene software development kit (SDK), please consult the page [here](http://selene.flatironinstitute.org/overview/overview.html).
 
 ![summary figure](docs/source/_static/img/selene_overview.png)
+
+### Help
+
+Please post bugs or feature requests to our Github [issues](https://github.com/FunctionLab/selene/issues).
+
+Join our [Google group](https://groups.google.com/forum/#!forum/selene-sdk) if you have questions about the package, case studies, or model development.
 
 ## Documentation
 
